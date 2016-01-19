@@ -559,6 +559,25 @@ func (b BlobStorageClient) CreateBlockBlob(container, name string) error {
 	return checkRespCode(resp.statusCode, []int{http.StatusCreated})
 }
 
+// CreateBlockBlobWithContentType initializes an empty block blob with no blocks.
+//
+// See https://msdn.microsoft.com/en-us/library/azure/dd179451.aspx
+func (b BlobStorageClient) CreateBlockBlobWithContentType(container, name string, contentType string) error {
+	path := fmt.Sprintf("%s/%s", container, name)
+	uri := b.client.getEndpoint(blobServiceName, path, url.Values{})
+	headers := b.client.getStandardHeaders()
+	headers["x-ms-blob-type"] = string(BlobTypeBlock)
+	headers["Content-Length"] = fmt.Sprintf("%v", 0)
+	headers["x-ms-blob-content-type"] = contentType
+
+	resp, err := b.client.exec("PUT", uri, headers, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.body.Close()
+	return checkRespCode(resp.statusCode, []int{http.StatusCreated})
+}
+
 // PutBlock saves the given data chunk to the specified block blob with
 // given ID.
 //

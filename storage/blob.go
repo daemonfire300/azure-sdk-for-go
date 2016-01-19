@@ -623,6 +623,25 @@ func (b BlobStorageClient) PutBlockList(container, name string, blocks []Block) 
 	return checkRespCode(resp.statusCode, []int{http.StatusCreated})
 }
 
+// PutBlockListWithContentType saves list of blocks to the specified block blob.
+//
+// See https://msdn.microsoft.com/en-us/library/azure/dd179467.aspx
+func (b BlobStorageClient) PutBlockListWithContentType(container, name string, blocks []Block, contentType string) error {
+	blockListXML := prepareBlockListRequest(blocks)
+
+	uri := b.client.getEndpoint(blobServiceName, pathForBlob(container, name), url.Values{"comp": {"blocklist"}})
+	headers := b.client.getStandardHeaders()
+	headers["Content-Length"] = fmt.Sprintf("%v", len(blockListXML))
+	headers["x-ms-blob-content-type"] = contentType
+
+	resp, err := b.client.exec("PUT", uri, headers, strings.NewReader(blockListXML))
+	if err != nil {
+		return err
+	}
+	defer resp.body.Close()
+	return checkRespCode(resp.statusCode, []int{http.StatusCreated})
+}
+
 // GetBlockList retrieves list of blocks in the specified block blob.
 //
 // See https://msdn.microsoft.com/en-us/library/azure/dd179400.aspx

@@ -7,8 +7,15 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/Azure/go-pkcs12"
+	"golang.org/x/crypto/pkcs12"
 )
+
+// ClientFromPublishSettingsData unmarshalls the contents of a publish settings file
+// from https://manage.windowsazure.com/publishsettings.
+// If subscriptionID is left empty, the first subscription in the file is used.
+func ClientFromPublishSettingsData(settingsData []byte, subscriptionID string) (client Client, err error) {
+	return ClientFromPublishSettingsDataWithConfig(settingsData, subscriptionID, DefaultConfig())
+}
 
 // ClientFromPublishSettingsFile reads a publish settings file downloaded from https://manage.windowsazure.com/publishsettings.
 // If subscriptionID is left empty, the first subscription in the file is used.
@@ -28,8 +35,15 @@ func ClientFromPublishSettingsFileWithConfig(filePath, subscriptionID string, co
 		return client, err
 	}
 
+	return ClientFromPublishSettingsDataWithConfig(publishSettingsContent, subscriptionID, config)
+}
+
+// ClientFromPublishSettingsDataWithConfig unmarshalls the contents of a publish settings file
+// from https://manage.windowsazure.com/publishsettings.
+// If subscriptionID is left empty, the first subscription in the string is used.
+func ClientFromPublishSettingsDataWithConfig(data []byte, subscriptionID string, config ClientConfig) (client Client, err error) {
 	publishData := publishData{}
-	if err = xml.Unmarshal(publishSettingsContent, &publishData); err != nil {
+	if err = xml.Unmarshal(data, &publishData); err != nil {
 		return client, err
 	}
 
@@ -46,7 +60,7 @@ func ClientFromPublishSettingsFileWithConfig(filePath, subscriptionID string, co
 					return client, err
 				}
 
-				pems, err := pkcs12.ConvertToPEM(pfxData, nil)
+				pems, err := pkcs12.ToPEM(pfxData, "")
 
 				cert := []byte{}
 				for _, b := range pems {
@@ -59,7 +73,7 @@ func ClientFromPublishSettingsFileWithConfig(filePath, subscriptionID string, co
 		}
 	}
 
-	return client, fmt.Errorf("could not find subscription '%s' in '%s'", subscriptionID, filePath)
+	return client, fmt.Errorf("could not find subscription '%s' in settings provided", subscriptionID)
 }
 
 type publishSettings struct {
